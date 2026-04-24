@@ -80,6 +80,27 @@ Questions:
   - `data/Amazon/index/Office_Products.item.json`
 - Initial baseline will use `Industrial_and_Scientific`.
 
+# Long-tail Analysis
+
+## Dataset
+
+- Category: Industrial_and_Scientific
+- Train file: `data/Amazon/train/Industrial_and_Scientific_5_2016-10-2018-11.csv`
+
+## Frequency Distribution
+
+| Group | Item Ratio | Interaction Ratio |
+|---|---:|---:|
+| Head | 19.99% | 55.44% |
+| Middle | 59.98% | 39.30% |
+| Tail | 20.02% | 5.26% |
+
+## Observation
+
+The training data shows a clear long-tail distribution. The top 20% items contribute more than half of all training interactions, while the bottom 20% items contribute only about 5.26% of interactions.
+
+This imbalance may cause the SFT model to overfit popular items and underfit tail items. Therefore, introducing a long-tail-aware weighted loss is reasonable for improving tail item exposure and tail recall.
+
 ## 4. Evaluation
 
 Related files:
