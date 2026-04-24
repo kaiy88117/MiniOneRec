@@ -60,6 +60,26 @@ Questions:
 - For long-tail loss, the preferred target identifier is `item_id`, because item frequency should be counted from item interactions rather than generated SID tokens.
 - Next step: inspect the actual train CSV format and confirm whether `item_id` is available in the processed training file.
 
+## Current Finding: Available Processed Amazon Data
+
+- The repository already contains processed Amazon data under `data/Amazon`.
+- Available categories:
+  - `Industrial_and_Scientific`
+  - `Office_Products`
+- Available train / valid / test CSV files:
+  - `data/Amazon/train/Industrial_and_Scientific_5_2016-10-2018-11.csv`
+  - `data/Amazon/valid/Industrial_and_Scientific_5_2016-10-2018-11.csv`
+  - `data/Amazon/test/Industrial_and_Scientific_5_2016-10-2018-11.csv`
+  - `data/Amazon/train/Office_Products_5_2016-10-2018-11.csv`
+  - `data/Amazon/valid/Office_Products_5_2016-10-2018-11.csv`
+  - `data/Amazon/test/Office_Products_5_2016-10-2018-11.csv`
+- Available SID / item metadata files:
+  - `data/Amazon/index/Industrial_and_Scientific.index.json`
+  - `data/Amazon/index/Industrial_and_Scientific.item.json`
+  - `data/Amazon/index/Office_Products.index.json`
+  - `data/Amazon/index/Office_Products.item.json`
+- Initial baseline will use `Industrial_and_Scientific`.
+
 ## 4. Evaluation
 
 Related files:
