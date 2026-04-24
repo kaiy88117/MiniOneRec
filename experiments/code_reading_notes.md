@@ -59,6 +59,7 @@ Questions:
 - This provides a reusable implementation pattern for long-tail-aware weighted loss.
 - For long-tail loss, the preferred target identifier is `item_id`, because item frequency should be counted from item interactions rather than generated SID tokens.
 - Next step: inspect the actual train CSV format and confirm whether `item_id` is available in the processed training file.
+
 ## 4. Evaluation
 
 Related files:
