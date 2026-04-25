@@ -1,2 +1,6 @@
 __pycache__/
 *.pyc
+# Cloud experiment artifacts
+experiments/cloud_logs/**/sft_*_test.json
+*.tar.gz
+results/

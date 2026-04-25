@@ -79,6 +79,40 @@ Local SFT data pipeline checks passed.
 - Only target semantic ID tokens and EOS participate in SFT loss.
 - DataCollatorForSeq2Seq successfully pads a 4-sample batch.
 
+## Baseline SFT Results: Sid-only Qwen2.5-0.5B on Industrial_and_Scientific
+
+Cloud setup:
+
+- Platform: AutoDL
+- GPU: RTX 4090D 24GB
+- Model: Qwen/Qwen2.5-0.5B-Instruct
+- Dataset: Industrial_and_Scientific_5_2016-10-2018-11
+- Training mode: SidSFTDataset only
+- Epochs: 3
+- Batch size: 64
+- Micro batch size: 4
+- Learning rate: 5e-5
+
+Accuracy metrics:
+
+| Metric | Value |
+|---|---:|
+| HR@10 | 0.1297 |
+| NDCG@10 | 0.0913 |
+| Invalid Rate | 0.0000 |
+
+Long-tail metrics:
+
+| Metric | Value |
+|---|---:|
+| Coverage@10 | 0.1851 |
+| Tail Ratio@10 | 0.0213 |
+| Tail Recall@10 | 0.0288 |
+
+Observation:
+
+The sid-only SFT baseline achieves a usable HR@10 and NDCG@10, but long-tail exposure is weak. Only about 2.13% of top-10 recommendation slots are tail items, and Tail Recall@10 is only about 2.88%. This supports the motivation for adding a long-tail-aware weighted loss in the SFT stage.
+
 ### Stage 4: Analysis
 
 Analyze the trade-off between:

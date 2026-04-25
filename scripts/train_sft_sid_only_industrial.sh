@@ -3,7 +3,12 @@ set -e
 
 export CUDA_VISIBLE_DEVICES=0
 export TOKENIZERS_PARALLELISM=false
+export HF_ENDPOINT=https://hf-mirror.com
+export HF_HOME=/root/autodl-tmp/hf_cache
+export HUGGINGFACE_HUB_CACHE=/root/autodl-tmp/hf_cache
 
+export WANDB_DISABLED=true
+export WANDB_MODE=disabled
 MODEL_NAME="Qwen/Qwen2.5-0.5B-Instruct"
 
 TRAIN_FILE="data/Amazon/train/Industrial_and_Scientific_5_2016-10-2018-11.csv"

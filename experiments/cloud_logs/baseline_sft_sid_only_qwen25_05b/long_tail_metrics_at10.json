@@ -1,0 +1,20 @@
+{
+  "topk": 10,
+  "total_users": 4533,
+  "total_items": 3636,
+  "head_items": 727,
+  "middle_items": 2182,
+  "tail_items": 727,
+  "head_target_total": 1815,
+  "middle_target_total": 1519,
+  "tail_target_total": 1043,
+  "coverage_at_k": 0.1850935093509351,
+  "tail_ratio_at_k": 0.02128833002426649,
+  "tail_recall_at_k": 0.028763183125599234,
+  "invalid_count": 0,
+  "invalid_rate": 0.0,
+  "unique_recommended_items_at_k": 673,
+  "valid_pred_count_at_k": 45330,
+  "tail_pred_count_at_k": 965,
+  "tail_target_hit_at_k": 30
+}
