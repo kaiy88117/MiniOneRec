@@ -13,6 +13,65 @@ Scaling Generative Recommendation**
 <a href="https://arxiv.org/abs/2510.24431">📄 Technical Report</a> | <a href="https://huggingface.co/kkknight/MiniOneRec">🤗 Huggingface</a> | <a href="https://modelscope.cn/models/k925238839/MiniOneRec">🤖  Modelscope</a>
 </div>
 
+---
+
+# Fork Extension: Long-tail-aware SFT for Generative Recommendation
+
+This fork extends MiniOneRec with a long-tail-aware weighted SFT loss for generative recommendation. The goal is to reduce head-item bias and improve long-tail item exposure while preserving ranking accuracy.
+
+## Project Highlights
+
+- Reproduced the SID-only SFT training and evaluation pipeline on Amazon `Industrial_and_Scientific`.
+- Diagnosed head-item bias in the baseline SFT model using item-frequency statistics.
+- Implemented `LongTailSidSFTDataset`, which assigns sample-level weights based on target item popularity.
+- Implemented `LongTailSFTTrainer`, which applies sequence-level weighted cross-entropy loss.
+- Fixed a subtle HuggingFace Trainer issue where `tail_weight` was removed by `remove_unused_columns=True`.
+- Added long-tail evaluation metrics: `Coverage@10`, `Tail Ratio@10`, `Tail Recall@10`, and `Invalid Rate`.
+
+## Main Result
+
+- Dataset: Amazon `Industrial_and_Scientific`
+- Base model: `Qwen/Qwen2.5-0.5B-Instruct`
+- Training: SID-only SFT, 3 epochs, single GPU
+
+| Metric | Baseline SFT | Long-tail SFT |
+|---|---:|---:|
+| HR@10 | 0.1297 | **0.1372** |
+| NDCG@10 | 0.0913 | **0.0941** |
+| Coverage@10 | 0.1851 | 0.1834 |
+| Tail Ratio@10 | 0.0213 | **0.0300** |
+| Tail Recall@10 | 0.0288 | **0.0326** |
+| Invalid Rate | 0.0000 | 0.0000 |
+
+The long-tail-aware SFT loss improves `Tail Ratio@10` from 2.13% to 3.00% and `Tail Recall@10` from 2.88% to 3.26%, while also slightly improving `HR@10` and `NDCG@10`.
+
+## Method Overview
+
+Items are grouped by frequency in the training set:
+
+- Head items: top 20% by frequency
+- Middle items: middle 60%
+- Tail items: bottom 20%
+
+For the effective long-tail experiment, the sample-level loss weights are:
+
+| Group | Weight |
+|---|---:|
+| Head | 1.0 |
+| Middle | 1.5 |
+| Tail | 2.0 |
+
+The loss is computed as token-level cross entropy, averaged per sequence, and then multiplied by the sample-level `tail_weight`.
+
+## Key Engineering Note
+
+A critical bug was found during ablation: LT-mid and LT-large initially produced identical results. The root cause was HuggingFace `Trainer` removing the custom `tail_weight` field before `compute_loss()`.
+
+The fix is:
+
+```python
+remove_unused_columns=False
+
 **MiniOneRec** is the first fully open-source **generative recommendation** framework, which provides an end-to-end workflow spanning **SID construction**, **supervised fine-tuning (SFT)**, and recommendation-oriented **reinforcement learning (RL)**. 
 
 ---
