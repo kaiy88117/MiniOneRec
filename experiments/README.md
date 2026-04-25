@@ -70,6 +70,15 @@ Compare:
 - Weighted loss with medium tail weight
 - Weighted loss with large tail weight
 
+Local SFT data pipeline checks passed.
+
+- SidSFTDataset correctly reads Industrial_and_Scientific processed CSV.
+- Input history comes from history_item_sid.
+- Prediction target comes from item_sid.
+- Prompt tokens are masked as -100 in labels.
+- Only target semantic ID tokens and EOS participate in SFT loss.
+- DataCollatorForSeq2Seq successfully pads a 4-sample batch.
+
 ### Stage 4: Analysis
 
 Analyze the trade-off between:
