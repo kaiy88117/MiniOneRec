@@ -116,6 +116,7 @@ def train(
     train_from_scratch: bool = False,
     sid_index_path: str = "",
     item_meta_path: str = "",
+    dataset_mode: str = "sid_only",
 ):
     set_seed(seed)
     os.environ['WANDB_PROJECT'] = wandb_project
@@ -148,6 +149,7 @@ def train(
     tokenizer.pad_token = tokenizer.eos_token
     tokenizer.pad_token_id = tokenizer.eos_token_id
     tokenizer.padding_side = "left"
+    original_vocab_size = len(tokenizer)
     
     if sid_index_path and os.path.exists(sid_index_path):
         print(f"Loading index from {sid_index_path}")
@@ -191,20 +193,70 @@ def train(
         print(f"Trainable parameters (with grad-mask): {trainable_params:,} / "
             f"{total_params:,} ({100*trainable_params/total_params:.2f}%)")
         
-    train_datasets = []
-    # train_data1 = SFTData(train_file=train_file, tokenizer=tokenizer, max_len=cutoff_len,  sample=sample, seed=seed, category=category)
-    train_data1 = SidSFTDataset(train_file=train_file, tokenizer=tokenizer, max_len=cutoff_len,  sample=sample, seed=seed, category=category)
-    train_datasets.append(train_data1)
-    train_data2 = SidItemFeatDataset(item_file=item_meta_path, index_file=sid_index_path, tokenizer=tokenizer, max_len=cutoff_len,  sample=sample, seed=seed, category=category)
-    train_datasets.append(train_data2)
-    train_data3 = FusionSeqRecDataset(train_file=train_file, item_file=item_meta_path, index_file=sid_index_path, tokenizer=tokenizer, max_len=cutoff_len, sample=sample, seed=seed, category=category)
-    train_datasets.append(train_data3)
-    # train_data4 = SFTData(train_file=train_file, tokenizer=tokenizer, max_len=cutoff_len,  sample=sample, seed=seed, category=category)
-    # train_datasets.append(train_data4)
-    # train_data5 = TitleHistory2SidSFTDataset(train_file=train_file, item_file=item_meta_path, index_file=sid_index_path, tokenizer=tokenizer, max_len=cutoff_len, sample=sample, seed=seed, category=category)
-    # train_datasets.append(train_data5)
-    train_data = ConcatDataset(train_datasets)
-    val_data = SidSFTDataset(train_file=eval_file, tokenizer=tokenizer, max_len=cutoff_len,  sample=sample, seed=seed, category=category)
+    print(f"dataset_mode: {dataset_mode}")
+
+    if dataset_mode == "sid_only":
+        train_data = SidSFTDataset(
+            train_file=train_file,
+            tokenizer=tokenizer,
+            max_len=cutoff_len,
+            sample=sample,
+            seed=seed,
+            category=category,
+        )
+
+    elif dataset_mode == "original_mix":
+        train_datasets = []
+
+        train_data1 = SidSFTDataset(
+            train_file=train_file,
+            tokenizer=tokenizer,
+            max_len=cutoff_len,
+            sample=sample,
+            seed=seed,
+            category=category,
+        )
+        train_datasets.append(train_data1)
+
+        train_data2 = SidItemFeatDataset(
+            item_file=item_meta_path,
+            index_file=sid_index_path,
+            tokenizer=tokenizer,
+            max_len=cutoff_len,
+            sample=sample,
+            seed=seed,
+            category=category,
+        )
+        train_datasets.append(train_data2)
+
+        train_data3 = FusionSeqRecDataset(
+            train_file=train_file,
+            item_file=item_meta_path,
+            index_file=sid_index_path,
+            tokenizer=tokenizer,
+            max_len=cutoff_len,
+            sample=sample,
+            seed=seed,
+            category=category,
+        )
+        train_datasets.append(train_data3)
+
+        train_data = ConcatDataset(train_datasets)
+
+    else:
+        raise ValueError(
+            f"Unknown dataset_mode: {dataset_mode}. "
+            "Expected one of ['sid_only', 'original_mix']."
+        )
+
+    val_data = SidSFTDataset(
+        train_file=eval_file,
+        tokenizer=tokenizer,
+        max_len=cutoff_len,
+        sample=sample,
+        seed=seed,
+        category=category,
+    )
     # val_data = SFTData(train_file=eval_file, tokenizer=tokenizer, max_len=cutoff_len,  sample=20000, seed=seed, category=category)
     print("LOAD DATA FINISHED")    
     
