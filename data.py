@@ -465,6 +465,94 @@ Can you predict the next possible item that the user may expect?
             "labels": labels[-self.max_len:],
         }
 
+class LongTailSidSFTDataset(SidSFTDataset):
+    def __init__(
+        self,
+        train_file,
+        tokenizer,
+        max_len=2048,
+        sample=-1,
+        test=False,
+        seed=0,
+        category="",
+        K=4,
+        dedup=False,
+        head_weight=1.0,
+        middle_weight=1.2,
+        tail_weight=1.5,
+        head_ratio=0.2,
+        tail_ratio=0.2,
+    ):
+        self.head_weight = float(head_weight)
+        self.middle_weight = float(middle_weight)
+        self.tail_weight = float(tail_weight)
+        self.head_ratio = float(head_ratio)
+        self.tail_ratio = float(tail_ratio)
+
+        # Important:
+        # Do NOT call SidSFTDataset.__init__ here, because it calls get_inputs()
+        # before item_weight_map is built.
+        CSVBaseDataset.__init__(
+            self,
+            train_file,
+            sample,
+            seed,
+            max_len,
+            category,
+            dedup,
+            tokenizer,
+            test,
+        )
+
+        self._build_item_weight_map()
+        self.get_inputs()
+
+    def _build_item_weight_map(self):
+        item_freq = self.data["item_id"].astype(str).value_counts()
+        sorted_items = item_freq.sort_values(ascending=False).index.tolist()
+
+        num_items = len(sorted_items)
+        num_head = int(num_items * self.head_ratio)
+        num_tail = int(num_items * self.tail_ratio)
+
+        head_items = set(sorted_items[:num_head])
+        tail_items = set(sorted_items[num_items - num_tail:])
+
+        self.item_weight_map = {}
+        self.item_group_map = {}
+
+        for item_id in sorted_items:
+            if item_id in head_items:
+                self.item_weight_map[item_id] = self.head_weight
+                self.item_group_map[item_id] = "head"
+            elif item_id in tail_items:
+                self.item_weight_map[item_id] = self.tail_weight
+                self.item_group_map[item_id] = "tail"
+            else:
+                self.item_weight_map[item_id] = self.middle_weight
+                self.item_group_map[item_id] = "middle"
+
+        print(
+            "[LongTailSidSFTDataset] "
+            f"items={num_items}, "
+            f"head={len(head_items)}, "
+            f"middle={num_items - len(head_items) - len(tail_items)}, "
+            f"tail={len(tail_items)}, "
+            f"weights=(head={self.head_weight}, middle={self.middle_weight}, tail={self.tail_weight})"
+        )
+
+    def pre(self, idx):
+        example = super().pre(idx)
+
+        if self.test:
+            return example
+
+        row = self.data.iloc[idx]
+        item_id = str(row["item_id"])
+        weight = self.item_weight_map.get(item_id, self.middle_weight)
+
+        example["tail_weight"] = weight
+        return example
 
 class SidSFTDataset_GPR(CSVBaseDataset):
     def __init__(self, train_file, tokenizer, max_len=2048, sample=-1, test=False, seed=0, category="", K=4, dedup=False):

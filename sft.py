@@ -1,5 +1,6 @@
 import os
 import sys
+import random
 from typing import List
 import numpy as np 
 import fire
@@ -24,8 +25,7 @@ try:
 except ImportError:
     bnb = None
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from data import D3Dataset, SFTData, SidSFTDataset, SidItemFeatDataset, FusionSeqRecDataset, PreferenceSFTDataset, UserPreference2sidSFTDataset, TitleHistory2SidSFTDataset
-import random
+from data import D3Dataset, SFTData, SidSFTDataset, LongTailSidSFTDataset, SidItemFeatDataset, FusionSeqRecDataset, PreferenceSFTDataset, UserPreference2sidSFTDataset, TitleHistory2SidSFTDataset
 from datasets import Dataset as HFDataset
 from torch.utils.data import ConcatDataset
 
@@ -57,6 +57,41 @@ class TokenExtender:
         
         return self.new_tokens
 
+class LongTailSFTTrainer(transformers.Trainer):
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        tail_weights = inputs.pop("tail_weight", None)
+
+        if tail_weights is None:
+            return super().compute_loss(model, inputs, return_outputs=return_outputs)
+
+        tail_weights = tail_weights.to(self.args.device)
+
+        outputs = model(**inputs)
+        logits = outputs.logits
+        labels = inputs["labels"]
+
+        loss_fct = nn.CrossEntropyLoss(reduction="none")
+
+        # Shift so that tokens < n predict n
+        shift_logits = logits[..., :-1, :].contiguous()
+        shift_labels = labels[..., 1:].contiguous()
+
+        loss_per_token = loss_fct(
+            shift_logits.view(-1, shift_logits.size(-1)),
+            shift_labels.view(-1),
+        )
+
+        loss_per_seq = loss_per_token.view(shift_labels.shape[0], -1)
+
+        valid_tokens_mask = shift_labels != -100
+        sum_loss = (loss_per_seq * valid_tokens_mask).sum(dim=1)
+        num_valid = valid_tokens_mask.sum(dim=1)
+        seq_loss = sum_loss / (num_valid + 1e-9)
+
+        tail_weights = tail_weights.to(seq_loss.dtype)
+        weighted_loss = (seq_loss * tail_weights).mean()
+
+        return (weighted_loss, outputs) if return_outputs else weighted_loss
 
 def set_seed(seed):
     random.seed(seed)
@@ -117,6 +152,10 @@ def train(
     sid_index_path: str = "",
     item_meta_path: str = "",
     dataset_mode: str = "sid_only",
+    long_tail_head_weight: float = 1.0,
+    long_tail_middle_weight: float = 1.2,
+    long_tail_tail_weight: float = 1.5,
+    bf16: bool = True,
 ):
     set_seed(seed)
     os.environ['WANDB_PROJECT'] = wandb_project
@@ -204,7 +243,18 @@ def train(
             seed=seed,
             category=category,
         )
-
+    elif dataset_mode == "sid_long_tail":
+        train_data = LongTailSidSFTDataset(
+            train_file=train_file,
+            tokenizer=tokenizer,
+            max_len=cutoff_len,
+            sample=sample,
+            seed=seed,
+            category=category,
+            head_weight=long_tail_head_weight,
+            middle_weight=long_tail_middle_weight,
+            tail_weight=long_tail_tail_weight,
+        )
     elif dataset_mode == "original_mix":
         train_datasets = []
 
@@ -246,7 +296,7 @@ def train(
     else:
         raise ValueError(
             f"Unknown dataset_mode: {dataset_mode}. "
-            "Expected one of ['sid_only', 'original_mix']."
+            "Expected one of ['sid_only', 'sid_long_tail', 'original_mix']."
         )
 
     val_data = SidSFTDataset(
@@ -278,7 +328,8 @@ def train(
     print(hf_train_dataset)
     print(hf_val_dataset)
     eval_step = 0.05
-    trainer = transformers.Trainer(
+    trainer_cls = LongTailSFTTrainer if dataset_mode == "sid_long_tail" else transformers.Trainer
+    trainer = trainer_cls(
         # deepspeed=deepspeed,
         model=model,
         train_dataset=hf_train_dataset,
@@ -292,7 +343,7 @@ def train(
             warmup_steps=20,
             num_train_epochs=num_epochs,
             learning_rate=learning_rate,
-            bf16=True,
+            bf16=bf16,
             logging_steps=1,
             optim="adamw_torch",
             eval_strategy="steps",
