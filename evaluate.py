@@ -9,7 +9,10 @@ from data import  EvalD3Dataset, EvalSidDataset
 from LogitProcessor import ConstrainedLogitsProcessor
 from accelerate import Accelerator
 import random
-import bitsandbytes as bnb
+try:
+    import bitsandbytes as bnb
+except ImportError:
+    bnb = None
 
 
 
